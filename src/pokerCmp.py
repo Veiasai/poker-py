@@ -1,3 +1,5 @@
+from itertools import combinations, permutations
+
 def card_ranks(cards):
     ranks = ['0123456789TJQKA'.index(r) for r,x in cards]
     ranks.sort(reverse=True)
@@ -22,12 +24,11 @@ def two_pair(ranks):
     pair = kind(2, ranks)
     lowpair = kind(2, list(reversed(ranks)))
     if pair and lowpair != pair:
-        return map(int, (pair, lowpair))
+        return list(map(int, (pair, lowpair)))
     else:
         return None
 
 def hand_rank(hand):
-    "Return a value indicating the ranking of a hand."
     ranks = card_ranks(hand) 
     if straight(ranks) and flush(hand):
         return (8, max(ranks))
@@ -48,12 +49,26 @@ def hand_rank(hand):
     else:
         return (0, ranks)
 
-def poker(hands):
-    return max(hands, key=hand_rank)
+def take_rank(obj):
+        return obj['rank']
+
+def poker(players):
+    players.sort(key=take_rank, reverse=True)
+
+    
+def poker7(cards):
+    hands = list(combinations(cards, 5))
+    def combine_rank(hand):
+        rank = hand_rank(hand)
+        return {'hand': hand, 'rank': rank}
+    l = list(map(combine_rank, hands))
+    l.sort(key=take_rank, reverse=True)
+    return l
 
 if __name__ == '__main__':
-    cards = "2s 3d 4s 5s As".split()
+    cards = "2s 3d 4s 5s As 9s Ts".split()
+    print(poker7(cards))
     sf = "6c 7c 8c 9c Tc".split()
     temp = hand_rank(sf)
-    hands = [ sf]
+    hands = [sf]
     res = poker(hands)

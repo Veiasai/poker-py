@@ -1,7 +1,7 @@
 from enum import Enum
 from functools import wraps
 from card import *
-from pokerCmp import poker
+from pokerCmp import poker7
 import threading
 import random
 import queue
@@ -43,7 +43,7 @@ class Game(object):
     def __init__(self, maxPlayer):
         assert maxPlayer > 1
         self.maxPlayer = maxPlayer
-        self.players = [Player() for i in range(maxPlayer)]
+        self.players = [Player(i) for i in range(maxPlayer)]
         self.gameStatus = GameStatus.WAITFORPLAYERREADY
         self.lock = threading.RLock()
         self.numOfPlayer = 0
@@ -189,10 +189,20 @@ class Game(object):
         self.notifyAll('RIVER', -1, {'pubCards': self.pubCards.copy()})
 
     def end(self):
-        # how to do?
-        # self.notifyAll('END', -1, {pubCards: self.pubCards})
-        
-        pass
+        players = []
+        for p in self.players:
+            if p.active:
+                p.chip = p.chip - p.chipBet
+                if p.fold == False:
+                    p.setRank(self.pubCards)
+                    players.append(p)
+        def take_rank(p):
+            return p.rank
+        players.sort(key=take_rank, reverse=True)
+        def take_res(p):
+            return {'id': p.pos, 'hand': p.hand, 'rank': p.rank}
+        self.notifyAll('END', -1, {'res': list(map(take_res, players))})
+        # self.notifyAll('END', -1, {'res': res})
 
     def notifyAll(self, action, player, body, isArray = False):
         for p in range(0, self.maxPlayer):
@@ -284,7 +294,7 @@ class Game(object):
         return 0
 
 class Player(object):
-    def __init__(self):
+    def __init__(self, pos):
         self.chip = 0
         self.chipBet = 0
         self.cards = [0] * 2
@@ -292,9 +302,16 @@ class Player(object):
         self.ready = False 
         self.fold = False
         self.allin = False
-
+        self.pos = pos
         # intend to support different interaction like AI, websocket
         self.hook = emptyHook
+
+    def setRank(self, pubCards):
+        def cardToStr(card):
+            return str(card)
+        maxRank = poker7(list(map(cardToStr, self.cards + pubCards)))[0]
+        self.rank = maxRank['rank']
+        self.hand = maxRank['hand']
 
 class Deck(object):
     def __init__(self):
@@ -310,3 +327,10 @@ class Deck(object):
     def shuffle(self):
         random.shuffle(self.deckCards)
         self.i = 0
+
+if __name__ == '__main__':
+    p = Player(0)
+    p.cards = [Card(0, 1), Card(0, 2)]
+    pubCards = [Card(1, 1), Card(1, 2), Card(1, 3), Card(1, 4), Card(1, 5)]
+    p.setRank(pubCards)
+    print(p.rank)

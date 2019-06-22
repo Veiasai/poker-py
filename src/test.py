@@ -20,7 +20,7 @@ a.pbet(0, 20)
 a.pcall(1)
 a.pallin(2)
 
-a.pbet(0, 20)
+a.pcall(0)
 a.pcall(1)
 
 a.pbet(0, 20)
