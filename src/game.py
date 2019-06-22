@@ -1,6 +1,7 @@
 from enum import Enum
 from functools import wraps
 from card import *
+from pokerCmp import poker
 import threading
 import random
 import queue
@@ -90,7 +91,7 @@ class Game(object):
         return -1
 
     @critical
-    @status([GameStatus.WAITFORPLAYERREADY])
+    @status([GameStatus.WAITFORPLAYERREADY, GameStatus.CONTINUING])
     def start(self):
         for i in range(0, self.maxPlayer):
             if (self.players[i].active != self.players[i].ready):
@@ -102,7 +103,7 @@ class Game(object):
         def sendCardsToPlayer(player):
             player.cards[0] = self.deck.getCard()
             player.cards[1] = self.deck.getCard()
-            return {'cards': player.cards}
+            return {'cards': player.cards.copy()}
         
         # set array and send different msg to players repectively
         self.notifyAll('PREFLOP', -1, list(map(sendCardsToPlayer, self.players)), True)
@@ -119,7 +120,7 @@ class Game(object):
 
         self.putChip(self.sb, self.ante / 2, 'SB')
         self.putChip(self.bb, self.ante, 'BB')
-        self.lastBet = self.ante
+        self.lastBet = 0
 
         self.notifyAll('START', -1, {'btn': self.btn, 'sb': self.sb, 'bb': self.bb, 'utg': self.utg})
         return 0
@@ -157,6 +158,8 @@ class Game(object):
                 self.end()
             self.roundStatus = RoundStatus(self.roundStatus.value + 1)
             self.lastBet = 0
+            # sb first
+            self.exePos = self.sb
 
         self.timer = threading.Timer(15, self.timeFunc)
         self.timer.start()
@@ -175,19 +178,20 @@ class Game(object):
 
     def flop(self):
         self.pubCards = [self.deck.getCard() for i in range(3)]
-        self.notifyAll('FLOP', -1, {'pubCards': self.pubCards})
+        self.notifyAll('FLOP', -1, {'pubCards': self.pubCards.copy()})
 
     def turn(self):
         self.pubCards.append(self.deck.getCard())
-        self.notifyAll('TURN', -1, {'pubCards': self.pubCards})
+        self.notifyAll('TURN', -1, {'pubCards': self.pubCards.copy()})
 
     def river(self):
         self.pubCards.append(self.deck.getCard())
-        self.notifyAll('RIVER', -1, {'pubCards': self.pubCards})
+        self.notifyAll('RIVER', -1, {'pubCards': self.pubCards.copy()})
 
     def end(self):
         # how to do?
-        # self.notifyAll('TURN', -1, {pubCards: self.pubCards})
+        # self.notifyAll('END', -1, {pubCards: self.pubCards})
+        
         pass
 
     def notifyAll(self, action, player, body, isArray = False):
@@ -201,16 +205,21 @@ class Game(object):
             self.queue.put((p, action, player, rbody))
 
     def putChip(self, pos, num, action):
-        if self.players[pos].chip < num:
+        player = self.players[pos]
+        if player.chip < num:
             return -1
-        self.players[pos].chipBet = num
+        # allin
+        elif player.chip == num:
+            player.allin = True
+            action = 'ALLIN'
+        player.chipBet = num
         self.notifyAll(action, pos, {'num': int(num)})
         return 0
     
     @critical
     @status([GameStatus.RUNNING])
     def pbet(self, pos, num):
-        if (pos != self.exePos or num < self.ante or num < self.lastBet):
+        if (pos != self.exePos or num < self.ante or self.lastBet != 0):
             return -1
         
         self.putChip(pos, num, 'BET')
@@ -270,7 +279,6 @@ class Game(object):
             self.nextRound = self.exePos
             self.lastBet = self.players[pos].chip
         self.permitCheck = False
-        self.players[pos].allin = True
         self.putChip(pos, self.players[pos].chip, 'ALLIN')
         self.invokeNextPlayer()
         return 0
@@ -279,7 +287,7 @@ class Player(object):
     def __init__(self):
         self.chip = 0
         self.chipBet = 0
-        self.cards = [0] * 5
+        self.cards = [0] * 2
         self.active = False  # join a game
         self.ready = False 
         self.fold = False
@@ -295,7 +303,7 @@ class Deck(object):
 
     def getCard(self):
         num = self.deckCards[self.i]
-        card = Card(int(num / 13), num % 13)
+        card = Card(int(num / 13), num % 13 + 1)
         self.i = self.i + 1
         return card
 
