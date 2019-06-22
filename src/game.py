@@ -3,6 +3,7 @@ from functools import wraps
 from card import *
 import threading
 import random
+import queue
 
 class GameStatus(Enum):
     WAITFORPLAYERREADY = 1
@@ -49,6 +50,14 @@ class Game(object):
         self.timer = threading.Timer(15, self.timeFunc)
         self.btn = -1
         self.ante = 20
+        # An independent thread consumes the msg and call the related hook
+        self.queue = queue.Queue()
+        threading.Thread(target=self.hook_thread).start()
+
+    def hook_thread(self):
+        while(True):
+            (p, action, player, rbody) = self.queue.get(block=True)
+            self.players[p].hook(action, player, rbody)
 
     def timeFunc(self):
         task = threading.Thread(target=self.pfold, args=(self.exePos))
@@ -183,15 +192,11 @@ class Game(object):
         for p in range(0, self.maxPlayer):
             if self.players[p].active == False:
                 continue
-            
-            print("x")
             if (isArray):
-                msg = body[p]
+                rbody = body[p]
             else:
-                msg = body
-            # task = threading.Thread(target=p.hook, args=(action,player,msg))
-            # task.start()
-            self.players[p].hook(action, player, msg)
+                rbody = body
+            self.queue.put((p, action, player, rbody))
 
     def putChip(self, pos, num, action):
         player = self.players[pos]

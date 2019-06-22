@@ -3,8 +3,8 @@ import sys
 
 a = Game(6)
 
-def checkHook(action, player, msg):
-    print("action: {}, player: {}, msg: {} \n".format(action, player, msg))
+def checkHook(action, player, body):
+    print("action: {}, player: {}, body: {} \n".format(action, player, body))
 
 a.setPlayer(0, 500, checkHook)
 a.setPlayer(1, 500)
