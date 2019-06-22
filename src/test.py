@@ -1,5 +1,6 @@
 from game import *
 import sys
+import os
 
 a = Game(6)
 
@@ -28,5 +29,7 @@ a.pcall(1)
 
 a.pbet(0, 20)
 a.pcall(1)
+
 print('end')
-sys.exit()
+
+os._exit(status=0)
