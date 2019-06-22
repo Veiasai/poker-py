@@ -57,7 +57,7 @@ class Game(object):
     def hook_thread(self):
         while(True):
             (p, action, player, rbody) = self.queue.get(block=True)
-            self.players[p].hook(action, player, rbody)
+            self.players[p].hook(self, action, player, rbody)
 
     def timeFunc(self):
         task = threading.Thread(target=self.pfold, args=(self.exePos))
@@ -119,6 +119,7 @@ class Game(object):
 
         self.putChip(self.sb, self.ante / 2, 'SB')
         self.putChip(self.bb, self.ante, 'BB')
+        self.lastBet = self.ante
 
         self.notifyAll('START', -1, {'btn': self.btn, 'sb': self.sb, 'bb': self.bb, 'utg': self.utg})
         return 0
@@ -155,6 +156,7 @@ class Game(object):
             elif self.roundStatus == RoundStatus.RIVER:
                 self.end()
             self.roundStatus = RoundStatus(self.roundStatus.value + 1)
+            self.lastBet = 0
 
         self.timer = threading.Timer(15, self.timeFunc)
         self.timer.start()
@@ -181,7 +183,7 @@ class Game(object):
 
     def river(self):
         self.pubCards.append(self.deck.getCard())
-        self.notifyAll('TURN', -1, {'pubCards': self.pubCards})
+        self.notifyAll('RIVER', -1, {'pubCards': self.pubCards})
 
     def end(self):
         # how to do?
@@ -199,15 +201,16 @@ class Game(object):
             self.queue.put((p, action, player, rbody))
 
     def putChip(self, pos, num, action):
-        player = self.players[pos]
-        player.chip = player.chip - num
-        player.chipBet = player.chipBet + num
+        if self.players[pos].chip < num:
+            return -1
+        self.players[pos].chipBet = num
         self.notifyAll(action, pos, {'num': int(num)})
+        return 0
     
     @critical
     @status([GameStatus.RUNNING])
     def pbet(self, pos, num):
-        if (pos != self.exePos):
+        if (pos != self.exePos or num < self.ante or num < self.lastBet):
             return -1
         
         self.putChip(pos, num, 'BET')
@@ -219,10 +222,8 @@ class Game(object):
     @critical
     @status([GameStatus.RUNNING])
     def pcall(self, pos):
-        if (pos != self.exePos):
+        if pos != self.exePos or self.putChip(pos, self.lastBet, 'CALL') < 0:
             return -1
-        num = self.lastBet
-        self.putChip(pos, num, 'CALL')
         self.invokeNextPlayer()
         return 0
 
@@ -241,7 +242,6 @@ class Game(object):
     def pcheck(self, pos):
         if (pos != self.exePos or self.permitCheck == False):
             return -1
-
         self.notifyAll('CHECK', pos, {})
         self.invokeNextPlayer()
         return 0
@@ -252,6 +252,7 @@ class Game(object):
         if (pos != self.exePos or num < self.lastBet * 2):
             return -1
         
+        self.nextRound = self.exePos
         self.lastBet = num
         self.permitCheck = False
         self.putChip(pos, num, 'RAISE')
@@ -264,6 +265,11 @@ class Game(object):
         if (pos != self.exePos):
             return -1
         
+        # does allin raise the chip?
+        if self.lastBet < self.players[pos].chip:
+            self.nextRound = self.exePos
+            self.lastBet = self.players[pos].chip
+        self.permitCheck = False
         self.players[pos].allin = True
         self.putChip(pos, self.players[pos].chip, 'ALLIN')
         self.invokeNextPlayer()
