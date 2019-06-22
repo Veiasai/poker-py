@@ -139,33 +139,27 @@ class Game(object):
         if (self.exePos == self.nextRound):
             if self.roundStatus == RoundStatus.PREFLOP:
                 self.flop()
-                self.roundStatus = RoundStatus.FLOP
             elif self.roundStatus == RoundStatus.FLOP:
                 self.turn()
-                self.roundStatus = RoundStatus.TURN
             elif self.roundStatus == RoundStatus.TURN:
                 self.river()
-                self.roundStatus = RoundStatus.RIVER
             elif self.roundStatus == RoundStatus.RIVER:
                 self.end()
-                self.roundStatus = RoundStatus.END
+            self.roundStatus = RoundStatus(self.roundStatus.value + 1)
 
         self.timer = threading.Timer(15, self.timeFunc)
         self.timer.start()
 
     def gend(self):
         # continue round until end
-        self.roundStatus = self.roundStatus + 1
-        if self.roundStatus == RoundStatus.FLOP:
+        self.roundStatus
+        if self.roundStatus.value < RoundStatus.FLOP.value:
             self.flop()
-            self.roundStatus = self.roundStatus + 1
-        if self.roundStatus == RoundStatus.TURN:
+        if self.roundStatus.value < RoundStatus.TURN.value:
             self.turn()
-            self.roundStatus = self.roundStatus + 1
-        if self.roundStatus == RoundStatus.RIVER:
+        if self.roundStatus.value < RoundStatus.RIVER.value:
             self.river()
-            self.roundStatus = self.roundStatus + 1
-        if self.roundStatus == RoundStatus.END:
+        if self.roundStatus.value < RoundStatus.END.value:
             self.end()
 
     def flop(self):
@@ -280,7 +274,7 @@ class Player(object):
         self.fold = False
         self.allin = False
 
-        # intend to support differenct interaction like AI, websocket
+        # intend to support different interaction like AI, websocket
         self.hook = emptyHook
 
 class Deck(object):
