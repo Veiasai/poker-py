@@ -1,6 +1,7 @@
 from game import *
 import sys
 import os
+import time
 
 a = Game(6)
 
@@ -31,5 +32,5 @@ a.pbet(0, 20)
 a.pcall(1)
 
 print('end')
-
+time.sleep(1)
 os._exit(status=0)

@@ -309,7 +309,7 @@ class Player(object):
     def setRank(self, pubCards):
         def cardToStr(card):
             return str(card)
-        maxRank = poker7(list(map(cardToStr, self.cards + pubCards)))[0]
+        maxRank = poker7(map(cardToStr, self.cards + pubCards))
         self.rank = maxRank['rank']
         self.hand = maxRank['hand']
 
