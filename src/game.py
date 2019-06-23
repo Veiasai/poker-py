@@ -116,11 +116,12 @@ class Game(object):
 
         # a flag for end of one round
         self.exePos = self.utg
-        self.nextRound = self.utg
+        self.nextRound = self.bb
 
         self.putChip(self.sb, self.ante / 2, 'SB')
         self.putChip(self.bb, self.ante, 'BB')
-        self.lastBet = 0
+        self.lastBet = self.ante
+        self.permitCheck = False
 
         self.notifyAll('START', -1, {'btn': self.btn, 'sb': self.sb, 'bb': self.bb, 'utg': self.utg})
         return 0
