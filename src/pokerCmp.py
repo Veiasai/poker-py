@@ -49,13 +49,6 @@ def hand_rank(hand):
     else:
         return (0, ranks)
 
-def take_rank(obj):
-        return obj['rank']
-
-def poker(players):
-    players.sort(key=take_rank, reverse=True)
-
-    
 def poker7(cards):
     hands = combinations(cards, 5)
     hand = max(hands, key=hand_rank)

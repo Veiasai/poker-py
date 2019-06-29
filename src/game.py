@@ -53,6 +53,7 @@ class Game(object):
         self.ante = 20
         # An independent thread consumes the msg and call the related hook
         self.queue = queue.Queue()
+        self.ob = emptyHook
         threading.Thread(target=self.hook_thread).start()
 
     def hook_thread(self):
@@ -63,6 +64,9 @@ class Game(object):
     def timeFunc(self):
         task = threading.Thread(target=self.pfold, args=(self.exePos))
         task.start()
+
+    def setOb(self, ob):
+        self.ob = ob
 
     @critical
     @status([GameStatus.WAITFORPLAYERREADY])
@@ -205,7 +209,7 @@ class Game(object):
         self.notifyAll('END', -1, {'res': list(map(take_res, players))})
         # self.notifyAll('END', -1, {'res': res})
 
-    def notifyAll(self, action, player, body, isArray = False):
+    def notifyAll(self, action, playerPos, body, isArray = False):
         for p in range(0, self.maxPlayer):
             if self.players[p].active == False:
                 continue
@@ -213,7 +217,8 @@ class Game(object):
                 rbody = body[p]
             else:
                 rbody = body
-            self.queue.put((p, action, player, rbody))
+            self.queue.put((p, action, playerPos, rbody))
+        self.ob(self, action, playerPos, body)
 
     def putChip(self, pos, num, action):
         player = self.players[pos]
@@ -293,6 +298,9 @@ class Game(object):
         self.putChip(pos, self.players[pos].chip, 'ALLIN')
         self.invokeNextPlayer()
         return 0
+
+    def getJSON(self):
+        return 'temp'
 
 class Player(object):
     def __init__(self, pos):
